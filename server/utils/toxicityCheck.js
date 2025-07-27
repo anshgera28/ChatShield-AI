@@ -1,27 +1,24 @@
 // utils/toxicityCheck.js
-import axios from 'axios';
 import dotenv from 'dotenv';
+import { OpenAI } from 'openai';
 
 dotenv.config();
 
-const PERSPECTIVE_API_KEY = process.env.PERSPECTIVE_API_KEY;
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function checkToxicity(message) {
   try {
-    const response = await axios.post(
-      `https://commentanalyzer.googleapis.com/v1alpha1/comments:analyze?key=${PERSPECTIVE_API_KEY}`,
-      {
-        comment: { text: message },
-        languages: ['en'],
-        requestedAttributes: { TOXICITY: {} },
-      }
-    );
+    const response = await openai.moderations.create({
+      input: message,
+    });
 
-    const score = response.data.attributeScores.TOXICITY.summaryScore.value;
-    return score;
-  } catch (error) {
-    console.error('Error calling Perspective API:', error.response?.data || error.message);
-    // Return 0 so message isn't blocked if API fails
-    return 0;
+    const result = response.results[0];
+
+    return result.flagged; // true = toxic
+  } catch (err) {
+    console.error('Moderation API error:', err);
+    return false; // fallback to allow message if API fails
   }
 }

@@ -11,7 +11,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*', // Change this to your frontend URL in production
+    origin: '*',
     methods: ['GET', 'POST'],
   },
 });
@@ -22,20 +22,14 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   socket.on('sendMessage', async ({ username, message }) => {
-    try {
-      const toxicityScore = await checkToxicity(message);
-      const isToxic = toxicityScore > 0.8;
+    const isToxic = await checkToxicity(message);
 
-      if (isToxic) {
-        socket.emit('warning', {
-          message: `⚠️ Message blocked due to toxicity (score: ${toxicityScore.toFixed(2)})`,
-        });
-      } else {
-        io.emit('receiveMessage', { username, message });
-      }
-    } catch (error) {
-      console.error('Error processing message:', error);
-      socket.emit('error', { message: 'Server error while processing message.' });
+    if (isToxic) {
+      socket.emit('warning', {
+        message: `⚠️ Message blocked due to policy violation.`,
+      });
+    } else {
+      io.emit('receiveMessage', { username, message });
     }
   });
 
@@ -45,5 +39,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
